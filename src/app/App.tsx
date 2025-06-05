@@ -539,7 +539,7 @@ Adapt your responses to incorporate the specific strategies and methods of this 
       disconnectFromRealtime();
     }
 
-    window.location.href = '/transcript-review';
+    window.location.href = '/therapy-insights';
   };
 
   const formatTime = (seconds: number) => {
