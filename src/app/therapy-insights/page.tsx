@@ -21,37 +21,50 @@ export default function TherapyInsights() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [therapyData, setTherapyData] = useState<TherapyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(true);
+  const [loadingActions, setLoadingActions] = useState(true);
+  const [insightsComplete, setInsightsComplete] = useState(false);
+  const [actionsComplete, setActionsComplete] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Analyzing your session...');
 
   useEffect(() => {
     const analyzeSession = async () => {
       try {
         setLoadingMessage('Analyzing your session...');
+        setLoadingInsights(true);
+        setLoadingActions(true);
+        setInsightsComplete(false);
+        setActionsComplete(false);
 
-        // Run both API calls in parallel
-        const [insightsResponse, actionsResponse] = await Promise.all([
-          fetch('/api/generate-therapy-insights', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              conversation: transcriptItems.map((item: TranscriptItem) => item.title).join('\n') 
-            })
-          }),
-          fetch('/api/generate-therapy-actions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              conversation: transcriptItems.map((item: TranscriptItem) => item.title).join('\n') 
-            })
-          })
-        ]);
+        const conversationText = transcriptItems.map((item: TranscriptItem) => item.title).join('\n');
 
-        if (!insightsResponse.ok || !actionsResponse.ok) {
-          throw new Error('Failed to analyze session');
-        }
+        // Start both API calls
+        const insightsPromise = fetch('/api/generate-therapy-insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation: conversationText })
+        }).then(async (response) => {
+          if (!response.ok) throw new Error('Failed to generate insights');
+          const data = await response.json();
+          setLoadingInsights(false);
+          setInsightsComplete(true);
+          return data;
+        });
 
-        const insightsData = await insightsResponse.json();
-        const actionsData = await actionsResponse.json();
+        const actionsPromise = fetch('/api/generate-therapy-actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation: conversationText })
+        }).then(async (response) => {
+          if (!response.ok) throw new Error('Failed to generate actions');
+          const data = await response.json();
+          setLoadingActions(false);
+          setActionsComplete(true);
+          return data;
+        });
+
+        // Wait for both to complete
+        const [insightsData, actionsData] = await Promise.all([insightsPromise, actionsPromise]);
 
         const sessionData = {
           insights: insightsData.insights,
@@ -149,22 +162,60 @@ export default function TherapyInsights() {
               Session Insights
             </h2>
             <div className="space-y-4">
-              {therapyData?.insights.map((insight, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-400"
-                >
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {insight.title}
-                  </h3>
-                  <p className="text-gray-600">
-                    {insight.description}
-                  </p>
-                </motion.div>
-              ))}
+              {therapyData?.insights ? (
+                // Show insights when data is ready
+                therapyData.insights.map((insight, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-400"
+                  >
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {insight.title}
+                    </h3>
+                    <p className="text-gray-600">
+                      {insight.description}
+                    </p>
+                  </motion.div>
+                ))
+              ) : (
+                // Show loading wheels when data isn't ready
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="relative w-16 h-16 mb-6">
+                    <motion.div
+                      className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-lg text-gray-600 mb-4"
+                  >
+                    Analyzing your session patterns...
+                  </motion.p>
+                  <div className="space-y-3 w-full max-w-2xl">
+                    {[1, 2, 3].map((i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0.3 }}
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                        className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-400"
+                      >
+                        <div className="animate-pulse">
+                          <div className="h-4 bg-blue-200 rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-blue-100 rounded w-full mb-1"></div>
+                          <div className="h-3 bg-blue-100 rounded w-5/6"></div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         );
@@ -182,22 +233,60 @@ export default function TherapyInsights() {
               Action Items
             </h2>
             <div className="space-y-4">
-              {therapyData?.actions.map((action, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-green-50 rounded-lg p-6 border-l-4 border-green-400"
-                >
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {action.title}
-                  </h3>
-                  <p className="text-gray-600">
-                    {action.description}
-                  </p>
-                </motion.div>
-              ))}
+              {therapyData?.actions ? (
+                // Show actions when data is ready
+                therapyData.actions.map((action, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-green-50 rounded-lg p-6 border-l-4 border-green-400"
+                  >
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {action.title}
+                    </h3>
+                    <p className="text-gray-600">
+                      {action.description}
+                    </p>
+                  </motion.div>
+                ))
+              ) : (
+                // Show loading wheels when data isn't ready
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="relative w-16 h-16 mb-6">
+                    <motion.div
+                      className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-lg text-gray-600 mb-4"
+                  >
+                    Creating your action plan...
+                  </motion.p>
+                  <div className="space-y-3 w-full max-w-2xl">
+                    {[1, 2, 3].map((i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0.3 }}
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+                        className="bg-green-50 rounded-lg p-6 border-l-4 border-green-400"
+                      >
+                        <div className="animate-pulse">
+                          <div className="h-4 bg-green-200 rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-green-100 rounded w-full mb-1"></div>
+                          <div className="h-3 bg-green-100 rounded w-5/6"></div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         );
@@ -207,8 +296,17 @@ export default function TherapyInsights() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative w-24 h-24 mx-auto mb-8">
+        <div className="text-center max-w-2xl mx-auto px-4">
+          <motion.h2
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold text-gray-900 mb-8"
+          >
+            Analyzing Your Session
+          </motion.h2>
+          
+          {/* Main Loading Animation */}
+          <div className="relative w-32 h-32 mx-auto mb-12">
             <motion.div
               className="absolute inset-0 border-4 border-blue-600 rounded-full"
               animate={{
@@ -234,12 +332,115 @@ export default function TherapyInsights() {
               }}
             />
           </div>
+
+          {/* Progress Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Insights Loading Card */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className={`p-6 rounded-lg border-2 transition-all duration-500 ${
+                insightsComplete 
+                  ? 'bg-green-50 border-green-400' 
+                  : loadingInsights 
+                    ? 'bg-blue-50 border-blue-400' 
+                    : 'bg-gray-50 border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                {insightsComplete ? (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </motion.div>
+                ) : loadingInsights ? (
+                  <div className="w-12 h-12 relative">
+                    <motion.div
+                      className="w-12 h-12 border-3 border-blue-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                )}
+                <div className="text-left">
+                  <h3 className="font-semibold text-gray-900">Session Insights</h3>
+                  <p className="text-sm text-gray-600">
+                    {insightsComplete ? 'Complete!' : loadingInsights ? 'Analyzing patterns...' : 'Waiting to start'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Actions Loading Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className={`p-6 rounded-lg border-2 transition-all duration-500 ${
+                actionsComplete 
+                  ? 'bg-green-50 border-green-400' 
+                  : loadingActions 
+                    ? 'bg-blue-50 border-blue-400' 
+                    : 'bg-gray-50 border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                {actionsComplete ? (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </motion.div>
+                ) : loadingActions ? (
+                  <div className="w-12 h-12 relative">
+                    <motion.div
+                      className="w-12 h-12 border-3 border-blue-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                )}
+                <div className="text-left">
+                  <h3 className="font-semibold text-gray-900">Action Items</h3>
+                  <p className="text-sm text-gray-600">
+                    {actionsComplete ? 'Complete!' : loadingActions ? 'Creating action plan...' : 'Waiting to start'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
             className="text-gray-600 text-lg"
           >
-            {loadingMessage}
+            {insightsComplete && actionsComplete 
+              ? 'Analysis complete! Preparing your results...' 
+              : loadingMessage}
           </motion.p>
         </div>
       </div>
