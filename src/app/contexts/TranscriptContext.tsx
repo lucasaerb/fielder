@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, FC, PropsWithChildren } from "react";
+import React, { createContext, useContext, useState, FC, PropsWithChildren, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { TranscriptItem } from "@/app/types";
 
@@ -11,12 +11,27 @@ type TranscriptContextValue = {
   addTranscriptBreadcrumb: (title: string, data?: Record<string, any>) => void;
   toggleTranscriptItemExpand: (itemId: string) => void;
   updateTranscriptItem: (itemId: string, updatedProperties: Partial<TranscriptItem>) => void;
+  clearTranscript: () => void;
 };
 
 const TranscriptContext = createContext<TranscriptContextValue | undefined>(undefined);
 
 export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
-  const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
+  const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('transcriptItems');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  // Save to localStorage whenever transcriptItems changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('transcriptItems', JSON.stringify(transcriptItems));
+    }
+  }, [transcriptItems]);
 
   function newTimestampPretty(): string {
     const now = new Date();
@@ -100,6 +115,13 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
     );
   };
 
+  const clearTranscript: TranscriptContextValue["clearTranscript"] = () => {
+    setTranscriptItems([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('transcriptItems');
+    }
+  };
+
   return (
     <TranscriptContext.Provider
       value={{
@@ -109,6 +131,7 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
         addTranscriptBreadcrumb,
         toggleTranscriptItemExpand,
         updateTranscriptItem,
+        clearTranscript,
       }}
     >
       {children}
