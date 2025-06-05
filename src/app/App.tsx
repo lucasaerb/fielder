@@ -15,6 +15,9 @@ import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { therapyRoleplayScenario } from "@/app/agentConfigs/therapyRoleplay";
+import Transcript from "./components/Transcript";
+import Events from "./components/Events";
+import { TranscriptItem } from "@/app/types";
 
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
@@ -27,7 +30,7 @@ type SessionStatus = "CONNECTED" | "DISCONNECTED" | "CONNECTING";
 
 function App() {
   const searchParams = useSearchParams()!;
-  const { selectedScenario, setSelectedScenario } = useRoleplay();
+  const { selectedScenario } = useRoleplay();
   const { 
     transcriptItems,
     addTranscriptMessage, 
@@ -95,6 +98,24 @@ function App() {
   };
 
   useEffect(() => {
+    // For roleplay scenarios, we don't need URL-based agent configs
+    if (selectedScenario) {
+      // Use a default agent configuration for roleplay scenarios
+      const defaultAgents = allAgentSets[defaultAgentSetKey];
+      const agentKeyToUse = defaultAgents[0]?.name || "";
+      
+      // Update the agent's instructions with the selected scenario
+      const agent = defaultAgents.find(a => a.name === agentKeyToUse);
+      if (agent) {
+        agent.instructions = selectedScenario.systemPrompt;
+      }
+
+      setSelectedAgentName(agentKeyToUse);
+      setSelectedAgentConfigSet(defaultAgents);
+      return;
+    }
+
+    // Only handle URL-based agent configs when no roleplay scenario is selected
     let finalAgentConfig = searchParams.get("agentConfig");
     if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
       finalAgentConfig = defaultAgentSetKey;
@@ -106,14 +127,6 @@ function App() {
 
     const agents = allAgentSets[finalAgentConfig];
     const agentKeyToUse = agents[0]?.name || "";
-
-    // If we have a selected scenario, update the agent's instructions
-    if (selectedScenario) {
-      const agent = agents.find(a => a.name === agentKeyToUse);
-      if (agent) {
-        agent.instructions = selectedScenario.systemPrompt;
-      }
-    }
 
     setSelectedAgentName(agentKeyToUse);
     setSelectedAgentConfigSet(agents);
@@ -178,8 +191,21 @@ function App() {
   };
 
   const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
-    if (sdkScenarioMap[agentSetKey]) {
+    // For roleplay scenarios, use the selectedAgentConfigSet directly
+    let agentSetKey;
+    let agentsToUse;
+    
+    if (selectedScenario && selectedAgentConfigSet) {
+      // Use the selectedAgentConfigSet for roleplay scenarios
+      agentsToUse = selectedAgentConfigSet;
+      agentSetKey = defaultAgentSetKey; // Use default key for SDK compatibility
+    } else {
+      // Original logic for URL-based agent configs (non-roleplay scenarios)
+      agentSetKey = searchParams.get("agentConfig") || "default";
+      agentsToUse = sdkScenarioMap[agentSetKey];
+    }
+
+    if (agentsToUse) {
       // Use new SDK path
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
@@ -192,7 +218,7 @@ function App() {
         if (!EPHEMERAL_KEY) return;
 
         // Ensure the selectedAgentName is first so that it becomes the root
-        const reorderedAgents = [...sdkScenarioMap[agentSetKey]];
+        const reorderedAgents = [...agentsToUse];
         const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
         if (idx > 0) {
           const [agent] = reorderedAgents.splice(idx, 1);
@@ -472,7 +498,7 @@ function App() {
                 const newAgentKey = handoffMatch[1];
 
                 // Find agent whose name matches (case-insensitive)
-                const candidate = selectedAgentConfigSet?.find(
+                const candidate = sdkScenarioMap[agentSetKey]?.find(
                   (a) => a.name.toLowerCase() === newAgentKey.toLowerCase(),
                 );
                 if (candidate && candidate.name !== selectedAgentName) {
@@ -502,7 +528,7 @@ function App() {
                 const handoffMatch = toolName.match(/^transfer_to_(.+)$/);
                 if (handoffMatch) {
                   const newAgentKey = handoffMatch[1];
-                  const candidate = selectedAgentConfigSet?.find(
+                  const candidate = sdkScenarioMap[agentSetKey]?.find(
                     (a) => a.name.toLowerCase() === newAgentKey.toLowerCase(),
                   );
                   if (candidate && candidate.name !== selectedAgentName) {
@@ -771,8 +797,8 @@ function App() {
   }, [sessionStatus]);
 
   const handleBackToScenarios = () => {
-    // Clear the selected scenario to return to the root page
-    setSelectedScenario(null);
+    // Navigate to the roleplay selection page
+    window.location.href = '/roleplay';
   };
 
   // Start timer when session connects

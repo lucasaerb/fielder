@@ -17,21 +17,31 @@ type TranscriptContextValue = {
 const TranscriptContext = createContext<TranscriptContextValue | undefined>(undefined);
 
 export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
-  const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>(() => {
-    // Initialize from localStorage if available
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('transcriptItems');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  // Initialize with empty array to avoid hydration mismatch
+  const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Save to localStorage whenever transcriptItems changes
+  // Load from localStorage after hydration
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    setIsHydrated(true);
+    const saved = localStorage.getItem('transcriptItems');
+    if (saved) {
+      try {
+        const parsedItems = JSON.parse(saved);
+        setTranscriptItems(parsedItems);
+      } catch (error) {
+        console.error('Failed to parse transcript items from localStorage:', error);
+        localStorage.removeItem('transcriptItems');
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever transcriptItems changes (only after hydration)
+  useEffect(() => {
+    if (isHydrated) {
       localStorage.setItem('transcriptItems', JSON.stringify(transcriptItems));
     }
-  }, [transcriptItems]);
+  }, [transcriptItems, isHydrated]);
 
   function newTimestampPretty(): string {
     const now = new Date();

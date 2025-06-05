@@ -58,38 +58,47 @@ export default function TranscriptReview() {
       <div className="max-w-4xl mx-auto p-5">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="space-y-6">
-            {transcriptItems.map((item: TranscriptItem) => (
-              <div key={item.itemId} className="flex gap-4">
-                {/* Role indicator */}
-                <div className="w-24 flex-shrink-0">
-                  <div className={`text-sm font-medium ${
-                    item.role === 'user' ? 'text-blue-600' : 'text-green-600'
-                  }`}>
-                    {item.role === 'user' ? 'You' : 'Assistant'}
-                  </div>
-                </div>
-
-                {/* Message content */}
-                <div className="flex-1">
-                  <div className="text-gray-800 whitespace-pre-wrap">
-                    {item.title}
-                  </div>
-                  
-                  {/* Breadcrumbs */}
-                  {item.type === 'BREADCRUMB' && item.data && (
-                    <div className="mt-2 text-sm text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">→</span>
-                        <span>{item.title}</span>
-                      </div>
-                      <pre className="mt-2 text-xs bg-gray-50 p-2 rounded">
-                        {JSON.stringify(item.data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+            {transcriptItems.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-500 text-lg mb-2">No transcript available</div>
+                <div className="text-gray-400 text-sm">
+                  Complete a roleplay session to see your conversation transcript here.
                 </div>
               </div>
-            ))}
+            ) : (
+              transcriptItems.map((item: TranscriptItem) => (
+                <div key={item.itemId} className="flex gap-4">
+                  {/* Role indicator */}
+                  <div className="w-24 flex-shrink-0">
+                    <div className={`text-sm font-medium ${
+                      item.role === 'user' ? 'text-blue-600' : 'text-green-600'
+                    }`}>
+                      {item.role === 'user' ? 'You' : 'Assistant'}
+                    </div>
+                  </div>
+
+                  {/* Message content */}
+                  <div className="flex-1">
+                    <div className="text-gray-800 whitespace-pre-wrap">
+                      {item.title}
+                    </div>
+                    
+                    {/* Breadcrumbs */}
+                    {item.type === 'BREADCRUMB' && item.data && (
+                      <div className="mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">→</span>
+                          <span>{item.title}</span>
+                        </div>
+                        <pre className="mt-2 text-xs bg-gray-50 p-2 rounded">
+                          {JSON.stringify(item.data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
