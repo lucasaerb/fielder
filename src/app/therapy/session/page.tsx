@@ -2,22 +2,22 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRoleplay } from '../../contexts/RoleplayContext';
+import { useTherapy } from '../../contexts/TherapyContext';
 import App from '../../App';
 
-export default function RoleplaySessionPage() {
-  const { selectedScenario } = useRoleplay();
+export default function TherapySessionPage() {
+  const { isConfigured } = useTherapy();
   const router = useRouter();
 
-  // Redirect to roleplay selection if no scenario is selected
+  // Redirect to therapy configuration if not configured
   useEffect(() => {
-    if (!selectedScenario) {
-      router.push('/roleplay');
+    if (!isConfigured) {
+      router.push('/therapy');
     }
-  }, [selectedScenario, router]);
+  }, [isConfigured, router]);
 
   // Show loading state while redirecting
-  if (!selectedScenario) {
+  if (!isConfigured) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">

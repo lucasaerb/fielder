@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TranscriptProvider } from '../contexts/TranscriptContext';
-import { RoleplayProvider } from '../contexts/RoleplayContext';
+import { TherapyProvider } from '../contexts/TherapyContext';
 
 export default function TranscriptReviewLayout({
   children,
@@ -10,10 +10,10 @@ export default function TranscriptReviewLayout({
   children: React.ReactNode;
 }) {
   return (
-    <RoleplayProvider>
+    <TherapyProvider>
       <TranscriptProvider>
         {children}
       </TranscriptProvider>
-    </RoleplayProvider>
+    </TherapyProvider>
   );
 } 
