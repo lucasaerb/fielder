@@ -11,6 +11,7 @@ import useAudioDownload from "./hooks/useAudioDownload";
 import { therapyAgentScenario } from "@/app/agentConfigs/therapyAgent";
 import Transcript from "./components/Transcript";
 import Events from "./components/Events";
+import Metamorphosis from "./components/Metamorphosis";
 import { TranscriptItem } from "@/app/types";
 
 type SessionStatus = "CONNECTED" | "DISCONNECTED" | "CONNECTING";
@@ -605,7 +606,7 @@ Adapt your responses to incorporate the specific strategies and methods of this 
 
       {/* Main content area */}
       <div className="flex-1 flex items-center justify-center">
-        {showDebugPanel && (
+        {showDebugPanel ? (
           <div className="w-full h-full flex gap-2 p-2">
             <div className="w-1/2">
               <Transcript
@@ -620,6 +621,34 @@ Adapt your responses to incorporate the specific strategies and methods of this 
               <Events isExpanded={isEventsPaneExpanded} />
             </div>
           </div>
+        ) : sessionStatus === "CONNECTED" ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-4">
+            <div className="mb-4 max-w-4xl w-full flex justify-center">
+              <Metamorphosis />
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                {selectedVoice?.name} is listening...
+              </h2>
+              <p className="text-gray-600">
+                Using {selectedApproach?.name} approach
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="mb-6">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-2.828-.46l-5.241 1.466a.75.75 0 01-.927-.928l1.466-5.241A8.955 8.955 0 113 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+              Ready to Connect
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Click &ldquo;Connect&rdquo; below to start your therapy session with {selectedVoice?.name}
+            </p>
+          </div>
         )}
       </div>
 
@@ -630,38 +659,57 @@ Adapt your responses to incorporate the specific strategies and methods of this 
             <>
               <button
                 onClick={handleEndSession}
-                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors font-medium shadow-sm"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 End Session
               </button>
               <button
                 onMouseDown={handleTalkButtonDown}
                 onMouseUp={handleTalkButtonUp}
                 onMouseLeave={handleTalkButtonUp}
-                className={`px-4 py-2 rounded-lg ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg ${
                   isPTTUserSpeaking
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-blue-500 hover:bg-blue-600"
-                } text-white transition-colors`}
+                } text-white transition-colors font-medium shadow-sm`}
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
                 {isPTTActive ? "Hold to Talk" : "Push to Talk"}
               </button>
               <button
                 onClick={() => setIsAudioPlaybackEnabled(!isAudioPlaybackEnabled)}
-                className={`px-4 py-2 rounded-lg ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg ${
                   isAudioPlaybackEnabled
                     ? "bg-green-500 hover:bg-green-600"
                     : "bg-gray-500 hover:bg-gray-600"
-                } text-white transition-colors`}
+                } text-white transition-colors font-medium shadow-sm`}
               >
+                {isAudioPlaybackEnabled ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18 12a9 9 0 01-9 9m0 0a9 9 0 01-9-9m9 9v-4m0-4V8m0 0a3 3 0 013 3m-3-3a3 3 0 00-3 3" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                )}
                 {isAudioPlaybackEnabled ? "Mute" : "Unmute"}
               </button>
             </>
           ) : (
             <button
               onClick={onToggleConnection}
-              className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors font-medium shadow-sm"
             >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
               Connect
             </button>
           )}
