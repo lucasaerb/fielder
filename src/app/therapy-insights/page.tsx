@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranscript } from '../contexts/TranscriptContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TranscriptItem } from '../types';
 
 interface Insight {
   title: string;
@@ -23,63 +24,66 @@ export default function TherapyInsights() {
   const [loadingMessage, setLoadingMessage] = useState('Analyzing your session...');
 
   useEffect(() => {
-    const generateInsights = async () => {
-      if (transcriptItems.length === 0) {
-        setIsLoading(false);
-        return;
-      }
-
+    const analyzeSession = async () => {
       try {
-        const conversationText = transcriptItems
-          .map(item => `${item.role === 'user' ? 'Client' : 'Therapist'}: ${item.title}`)
-          .join('\n');
-
         setLoadingMessage('Analyzing your session...');
-        
+
         // Run both API calls in parallel
         const [insightsResponse, actionsResponse] = await Promise.all([
           fetch('/api/generate-therapy-insights', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              conversation: conversationText,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              conversation: transcriptItems.map((item: TranscriptItem) => item.title).join('\n') 
+            })
           }),
           fetch('/api/generate-therapy-actions', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              conversation: conversationText,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              conversation: transcriptItems.map((item: TranscriptItem) => item.title).join('\n') 
+            })
           })
         ]);
 
         if (!insightsResponse.ok || !actionsResponse.ok) {
-          throw new Error('Failed to generate therapy data');
+          throw new Error('Failed to analyze session');
         }
 
-        const [insightsData, actionsData] = await Promise.all([
-          insightsResponse.json(),
-          actionsResponse.json()
-        ]);
+        const insightsData = await insightsResponse.json();
+        const actionsData = await actionsResponse.json();
 
-        setTherapyData({
+        const sessionData = {
           insights: insightsData.insights,
           actions: actionsData.actions,
-        });
+        };
+
+        setTherapyData(sessionData);
+
+        // Store the session data in localStorage
+        const date = new Date().toISOString();
+        const storedSessions = localStorage.getItem('therapy_sessions');
+        const sessions = storedSessions ? JSON.parse(storedSessions) : {};
+        sessions[date] = {
+          date,
+          insights: insightsData.insights,
+          actions: actionsData.actions.map((action: any) => ({
+            ...action,
+            completed: false
+          }))
+        };
+        localStorage.setItem('therapy_sessions', JSON.stringify(sessions));
+
+        setCurrentSlide(1);
       } catch (error) {
-        console.error('Error generating therapy data:', error);
+        console.error('Error analyzing session:', error);
         setLoadingMessage('Error analyzing session. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    generateInsights();
+    analyzeSession();
   }, [transcriptItems]);
 
   const nextSlide = () => {
@@ -297,6 +301,12 @@ export default function TherapyInsights() {
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               Start New Session
+            </Link>
+            <Link
+              href="/therapy-history"
+              className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+            >
+              View History
             </Link>
             <Link
               href="/transcript-review"
